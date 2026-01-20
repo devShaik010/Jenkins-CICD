@@ -10,7 +10,7 @@
  */
 
 pipeline {
-    agent none  // Multi-agent setup - specify per stage
+    agent any  // Multi-agent setup - specify per stage
     
     environment {
         // Docker Hub credentials (configure in Jenkins Credentials)
