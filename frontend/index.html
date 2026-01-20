@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Jenkins CI/CD Demo Application - A modern web application showcasing continuous integration and deployment">
+    <title>Jenkins CI/CD Demo App</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="background-gradient"></div>
+    
+    <nav class="navbar">
+        <div class="nav-brand">
+            <span class="logo">🚀</span>
+            <span class="brand-text">CI/CD Demo</span>
+        </div>
+        <div class="nav-links">
+            <a href="#features">Features</a>
+            <a href="#api">API Status</a>
+            <a href="#about">About</a>
+        </div>
+    </nav>
+
+    <main>
+        <section class="hero">
+            <div class="hero-content">
+                <h1 class="hero-title">
+                    <span class="gradient-text">Jenkins CI/CD</span>
+                    <br>Demo Application
+                </h1>
+                <p class="hero-subtitle">
+                    A modern demonstration of continuous integration and deployment 
+                    using Jenkins, Docker, and multi-agent pipelines.
+                </p>
+                <div class="hero-buttons">
+                    <button class="btn btn-primary" id="checkApiBtn">
+                        <span class="btn-icon">⚡</span>
+                        Check API Status
+                    </button>
+                    <a href="https://github.com" class="btn btn-secondary" target="_blank">
+                        <span class="btn-icon">📚</span>
+                        View Docs
+                    </a>
+                </div>
+            </div>
+            <div class="hero-visual">
+                <div class="pipeline-animation">
+                    <div class="pipeline-stage" id="stage1">
+                        <span class="stage-icon">📦</span>
+                        <span class="stage-label">Build</span>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-stage" id="stage2">
+                        <span class="stage-icon">🧪</span>
+                        <span class="stage-label">Test</span>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-stage" id="stage3">
+                        <span class="stage-icon">🐳</span>
+                        <span class="stage-label">Docker</span>
+                    </div>
+                    <div class="pipeline-connector"></div>
+                    <div class="pipeline-stage" id="stage4">
+                        <span class="stage-icon">🚀</span>
+                        <span class="stage-label">Deploy</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="api-status" id="api">
+            <div class="status-card">
+                <h2>Backend API Status</h2>
+                <div class="status-indicator" id="statusIndicator">
+                    <span class="status-dot"></span>
+                    <span class="status-text">Checking...</span>
+                </div>
+                <div class="api-response" id="apiResponse">
+                    <pre>Waiting for API response...</pre>
+                </div>
+            </div>
+        </section>
+
+        <section class="features" id="features">
+            <h2 class="section-title">Pipeline Features</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🔄</div>
+                    <h3>Multi-Stage Pipeline</h3>
+                    <p>Automated build, test, and deployment stages with parallel execution support.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🐳</div>
+                    <h3>Docker Integration</h3>
+                    <p>Containerized builds using Docker agents for consistent, isolated environments.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>Multi-Agent Setup</h3>
+                    <p>Distributed builds across multiple agents for faster, scalable CI/CD.</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Build Reports</h3>
+                    <p>Comprehensive test results and build artifacts with detailed logging.</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="about" id="about">
+            <div class="about-content">
+                <h2>About This Demo</h2>
+                <p>
+                    This project demonstrates a complete CI/CD pipeline setup using Jenkins. 
+                    It includes a frontend application (this page) and a Flask backend API, 
+                    both containerized with Docker and deployed via Jenkins pipelines.
+                </p>
+                <div class="tech-stack">
+                    <span class="tech-badge">Jenkins</span>
+                    <span class="tech-badge">Docker</span>
+                    <span class="tech-badge">Flask</span>
+                    <span class="tech-badge">Python</span>
+                    <span class="tech-badge">HTML/CSS/JS</span>
+                    <span class="tech-badge">Nginx</span>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>🚀 Built with Jenkins CI/CD Pipeline | Demo Project</p>
+        <p class="version">Version: <span id="appVersion">1.0.0</span></p>
+    </footer>
+
+    <script src="app.js"></script>
+</body>
+</html>

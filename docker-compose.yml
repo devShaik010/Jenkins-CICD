@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  frontend:
+    build: ./frontend
+    container_name: cicd-frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    networks:
+      - cicd-network
+    restart: unless-stopped
+
+  backend:
+    build: ./backend
+    container_name: cicd-backend
+    ports:
+      - "5000:5000"
+    environment:
+      - APP_VERSION=1.0.0
+      - BUILD_NUMBER=local
+    networks:
+      - cicd-network
+    restart: unless-stopped
+
+networks:
+  cicd-network:
+    driver: bridge

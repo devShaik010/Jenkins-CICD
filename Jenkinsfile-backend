@@ -1,0 +1,248 @@
+/**
+ * Jenkins Pipeline for Backend Application (Flask)
+ * 
+ * This pipeline demonstrates:
+ * - Multi-agent pipeline with Docker
+ * - Python testing with pytest
+ * - Code coverage reporting
+ * - Docker image building and deployment
+ * - Parallel stages for efficiency
+ */
+
+pipeline {
+    agent none  // Multi-agent setup - specify per stage
+    
+    environment {
+        // Docker Hub credentials (configure in Jenkins Credentials)
+        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
+        DOCKER_IMAGE_NAME = 'your-dockerhub-username/backend-app'
+        DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
+        APP_NAME = 'backend-app'
+        FLASK_ENV = 'production'
+    }
+    
+    options {
+        buildDiscarder(logRotator(numToKeepStr: '10'))
+        timestamps()
+        timeout(time: 30, unit: 'MINUTES')
+        disableConcurrentBuilds()
+    }
+    
+    stages {
+        stage('Checkout') {
+            agent any
+            steps {
+                echo '📥 Checking out source code...'
+                checkout scm
+                
+                script {
+                    env.GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
+                    env.GIT_COMMIT_MSG = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
+                }
+                
+                echo "Git Commit: ${env.GIT_COMMIT_SHORT}"
+            }
+        }
+        
+        stage('Build & Test') {
+            agent {
+                docker {
+                    image 'python:3.11-slim'
+                    args '-u root'
+                }
+            }
+            stages {
+                stage('Install Dependencies') {
+                    steps {
+                        echo '📦 Installing Python dependencies...'
+                        dir('backend') {
+                            sh '''
+                                pip install --upgrade pip
+                                pip install -r requirements.txt
+                            '''
+                        }
+                    }
+                }
+                
+                stage('Code Quality') {
+                    steps {
+                        echo '🔍 Running code quality checks...'
+                        dir('backend') {
+                            sh '''
+                                # Install linting tools
+                                pip install flake8 black
+                                
+                                # Check code formatting (don't fail on issues for demo)
+                                echo "Checking code with flake8..."
+                                flake8 app.py --max-line-length=120 --statistics || true
+                                
+                                echo "Checking code formatting with black..."
+                                black --check app.py || true
+                            '''
+                        }
+                    }
+                }
+                
+                stage('Run Tests') {
+                    steps {
+                        echo '🧪 Running unit tests...'
+                        dir('backend') {
+                            sh '''
+                                # Run pytest with coverage
+                                pytest test_app.py -v \
+                                    --cov=app \
+                                    --cov-report=term-missing \
+                                    --cov-report=xml:coverage.xml \
+                                    --junitxml=test-results.xml
+                            '''
+                        }
+                    }
+                    post {
+                        always {
+                            // Archive test results
+                            dir('backend') {
+                                junit allowEmptyResults: true, testResults: 'test-results.xml'
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        stage('Docker Operations') {
+            parallel {
+                stage('Build Docker Image') {
+                    agent any
+                    steps {
+                        echo '🐳 Building Docker image...'
+                        dir('backend') {
+                            script {
+                                docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}", "--build-arg APP_VERSION=${DOCKER_IMAGE_TAG} .")
+                                sh "docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest"
+                            }
+                        }
+                    }
+                }
+                
+                stage('Security Scan') {
+                    agent any
+                    steps {
+                        echo '🔒 Running security scan...'
+                        // This is a placeholder for tools like Trivy, Snyk, etc.
+                        sh '''
+                            echo "Security scan would run here"
+                            echo "Consider using: Trivy, Snyk, or similar tools"
+                        '''
+                    }
+                }
+            }
+        }
+        
+        stage('Test Docker Image') {
+            agent any
+            steps {
+                echo '🧪 Testing Docker image...'
+                script {
+                    sh """
+                        # Run container for testing
+                        docker run -d --name backend-test-${BUILD_NUMBER} -p 5001:5000 ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        
+                        # Wait for container to be ready
+                        sleep 10
+                        
+                        # Test health endpoint
+                        curl -f http://localhost:5001/api/health || exit 1
+                        
+                        # Test info endpoint
+                        curl -f http://localhost:5001/api/info || exit 1
+                        
+                        # Test echo endpoint
+                        curl -X POST http://localhost:5001/api/echo \
+                            -H "Content-Type: application/json" \
+                            -d '{"test": "data"}' || exit 1
+                        
+                        echo "✅ All Docker image tests passed!"
+                    """
+                }
+            }
+            post {
+                always {
+                    sh "docker stop backend-test-${BUILD_NUMBER} || true"
+                    sh "docker rm backend-test-${BUILD_NUMBER} || true"
+                }
+            }
+        }
+        
+        stage('Push to Registry') {
+            agent any
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '📤 Pushing Docker image to registry...'
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
+                        docker.image("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}").push()
+                        docker.image("${DOCKER_IMAGE_NAME}:latest").push()
+                    }
+                }
+            }
+        }
+        
+        stage('Deploy') {
+            agent any
+            when {
+                branch 'main'
+            }
+            steps {
+                echo '🚀 Deploying backend application...'
+                script {
+                    // Stop and remove existing container
+                    sh """
+                        docker stop ${APP_NAME} || true
+                        docker rm ${APP_NAME} || true
+                    """
+                    
+                    // Deploy new container
+                    sh """
+                        docker run -d \
+                            --name ${APP_NAME} \
+                            --restart unless-stopped \
+                            -p 5000:5000 \
+                            -e APP_VERSION=${DOCKER_IMAGE_TAG} \
+                            -e BUILD_NUMBER=${BUILD_NUMBER} \
+                            ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                    """
+                    
+                    // Verify deployment
+                    sh """
+                        sleep 5
+                        curl -f http://localhost:5000/api/health || exit 1
+                        echo "✅ Backend deployed and healthy!"
+                    """
+                }
+            }
+        }
+    }
+    
+    post {
+        always {
+            echo '🧹 Pipeline cleanup...'
+            sh 'docker image prune -f || true'
+        }
+        success {
+            echo '''
+            ╔═══════════════════════════════════════════════╗
+            ║         ✅ PIPELINE SUCCESSFUL! ✅            ║
+            ╚═══════════════════════════════════════════════╝
+            '''
+        }
+        failure {
+            echo '''
+            ╔═══════════════════════════════════════════════╗
+            ║           ❌ PIPELINE FAILED! ❌              ║
+            ╚═══════════════════════════════════════════════╝
+            '''
+        }
+    }
+}
