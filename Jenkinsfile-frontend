@@ -13,7 +13,7 @@ pipeline {
     
     environment {
         // Docker Hub credentials (configure in Jenkins Credentials)
-        DOCKER_HUB_CREDENTIALS = 'YOUR_DOCKERHUB_mohdnizam/frontend-app'
+        DOCKER_HUB_CREDENTIALS = 'mohdnizam/frontend-app'
 
         DOCKER_IMAGE_NAME = 'mohnizam/frontend-app'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
