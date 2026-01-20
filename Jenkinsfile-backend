@@ -11,7 +11,7 @@
 
 pipeline {
     agent none  // Multi-agent setup - specify per stage
-    
+    DOCKER_IMAGE_NAME = 'YOUR_DOCKERHUB_afrahali.xo/backend-app'
     environment {
         // Docker Hub credentials (configure in Jenkins Credentials)
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
