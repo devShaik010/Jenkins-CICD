@@ -2,25 +2,21 @@
  * Jenkins Pipeline for Frontend Application
  * 
  * This pipeline demonstrates:
- * - Multi-stage pipeline with Docker agent
+ * - Multi-stage pipeline
  * - Build, Test, Docker Build, and Deploy stages
- * - Parallel execution where applicable
  * - Docker image building and pushing
  */
 
 pipeline {
-    agent none  // We'll specify agent per stage for multi-agent setup
+    agent any  // Use default agent
     
     environment {
-        // Docker Hub credentials (configure in Jenkins Credentials)
-        DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')
         DOCKER_IMAGE_NAME = 'devshaik010/frontend-app'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         APP_NAME = 'frontend-app'
     }
     
     options {
-        // Pipeline options
         buildDiscarder(logRotator(numToKeepStr: '10'))
         timestamps()
         timeout(time: 30, unit: 'MINUTES')
@@ -29,12 +25,10 @@ pipeline {
     
     stages {
         stage('Checkout') {
-            agent any
             steps {
                 echo '📥 Checking out source code...'
                 checkout scm
                 
-                // Store git commit info
                 script {
                     env.GIT_COMMIT_SHORT = sh(script: 'git rev-parse --short HEAD', returnStdout: true).trim()
                     env.GIT_COMMIT_MSG = sh(script: 'git log -1 --pretty=%B', returnStdout: true).trim()
@@ -46,61 +40,46 @@ pipeline {
         }
         
         stage('Build & Validate') {
-            agent {
-                docker {
-                    image 'node:18-alpine'
-                    args '-u root'
-                }
-            }
             steps {
                 echo '🔨 Building and validating frontend...'
                 dir('frontend') {
-                    // Validate HTML (basic check)
                     sh '''
                         echo "Validating HTML files..."
                         for file in *.html; do
                             if [ -f "$file" ]; then
-                                echo "Found: $file"
+                                echo "✓ Found: $file"
+                                wc -l "$file"
                             fi
                         done
-                    '''
-                    
-                    // Check CSS syntax (basic validation)
-                    sh '''
+                        
                         echo "Checking CSS files..."
                         for file in *.css; do
                             if [ -f "$file" ]; then
-                                echo "Found: $file"
-                                # Count lines and check for basic syntax
+                                echo "✓ Found: $file"
                                 wc -l "$file"
                             fi
                         done
-                    '''
-                    
-                    // Check JavaScript (basic validation)
-                    sh '''
+                        
                         echo "Checking JavaScript files..."
                         for file in *.js; do
                             if [ -f "$file" ]; then
-                                echo "Found: $file"
+                                echo "✓ Found: $file"
                                 wc -l "$file"
                             fi
                         done
+                        
+                        echo "✅ All files validated!"
                     '''
                 }
             }
         }
         
         stage('Docker Build') {
-            agent any
             steps {
                 echo '🐳 Building Docker image...'
                 dir('frontend') {
                     script {
-                        // Build Docker image
                         docker.build("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}")
-                        
-                        // Also tag as latest
                         sh "docker tag ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG} ${DOCKER_IMAGE_NAME}:latest"
                     }
                 }
@@ -108,26 +87,20 @@ pipeline {
         }
         
         stage('Test Docker Image') {
-            agent any
             steps {
                 echo '🧪 Testing Docker image...'
                 script {
-                    // Run container and test health endpoint
                     sh """
                         docker run -d --name frontend-test-${BUILD_NUMBER} -p 8081:80 ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
                         sleep 5
-                        
-                        # Test if container is healthy
                         curl -f http://localhost:8081/health || exit 1
                         curl -f http://localhost:8081/ || exit 1
-                        
                         echo "✅ Docker image tests passed!"
                     """
                 }
             }
             post {
                 always {
-                    // Cleanup test container
                     sh "docker stop frontend-test-${BUILD_NUMBER} || true"
                     sh "docker rm frontend-test-${BUILD_NUMBER} || true"
                 }
@@ -135,45 +108,40 @@ pipeline {
         }
         
         stage('Push to Registry') {
-            agent any
             when {
                 branch 'main'
             }
             steps {
                 echo '📤 Pushing Docker image to registry...'
                 script {
-                    docker.withRegistry('https://registry.hub.docker.com', 'docker-hub-credentials') {
-                        docker.image("${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}").push()
-                        docker.image("${DOCKER_IMAGE_NAME}:latest").push()
+                    withCredentials([usernamePassword(credentialsId: 'docker-hub-credentials', usernameVariable: 'DOCKER_USER', passwordVariable: 'DOCKER_PASS')]) {
+                        sh '''
+                            echo "$DOCKER_PASS" | docker login -u "$DOCKER_USER" --password-stdin
+                            docker push ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                            docker push ${DOCKER_IMAGE_NAME}:latest
+                        '''
                     }
                 }
             }
         }
         
         stage('Deploy') {
-            agent any
             when {
                 branch 'main'
             }
             steps {
                 echo '🚀 Deploying application...'
                 script {
-                    // Stop existing container if running
                     sh """
                         docker stop ${APP_NAME} || true
                         docker rm ${APP_NAME} || true
-                    """
-                    
-                    // Run new container
-                    sh """
                         docker run -d \
                             --name ${APP_NAME} \
                             --restart unless-stopped \
                             -p 80:80 \
                             ${DOCKER_IMAGE_NAME}:${DOCKER_IMAGE_TAG}
+                        echo "✅ Frontend deployed successfully!"
                     """
-                    
-                    echo '✅ Frontend deployed successfully!'
                 }
             }
         }
@@ -182,7 +150,6 @@ pipeline {
     post {
         always {
             echo '🧹 Cleaning up...'
-            // Clean up dangling images
             sh 'docker image prune -f || true'
         }
         success {
