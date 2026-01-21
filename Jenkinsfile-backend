@@ -14,7 +14,7 @@ pipeline {
     environment {
         // Docker Hub credentials (configure in Jenkins Credentials)
         DOCKER_HUB_CREDENTIALS = credentials('docker-hub-credentials')    
-        DOCKER_IMAGE_NAME = 'afrahali.xo/backend-app'
+        DOCKER_IMAGE_NAME = 'afrahali26/backend-app'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         APP_NAME = 'backend-app'
         FLASK_ENV = 'production'
