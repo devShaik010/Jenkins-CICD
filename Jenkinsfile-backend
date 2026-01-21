@@ -12,7 +12,7 @@ pipeline {
     agent any  // Use default agent to avoid context issues
     
     environment {
-        DOCKER_IMAGE_NAME = 'devshaik010/backend-app'
+        DOCKER_IMAGE_NAME = 'stingman007/backend-app'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         APP_NAME = 'backend-app'
         FLASK_ENV = 'production'
