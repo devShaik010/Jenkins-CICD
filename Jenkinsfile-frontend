@@ -11,7 +11,7 @@ pipeline {
     agent any  // Use default agent
     
     environment {
-        DOCKER_IMAGE_NAME = 'devshaik010/frontend-app'
+        DOCKER_IMAGE_NAME = 'stingman007/frontend-app'
         DOCKER_IMAGE_TAG = "${BUILD_NUMBER}"
         APP_NAME = 'frontend-app'
     }
@@ -108,9 +108,6 @@ pipeline {
         }
         
         stage('Push to Registry') {
-            when {
-                branch 'main'
-            }
             steps {
                 echo '📤 Pushing Docker image to registry...'
                 script {
@@ -126,9 +123,6 @@ pipeline {
         }
         
         stage('Deploy') {
-            when {
-                branch 'main'
-            }
             steps {
                 echo '🚀 Deploying application...'
                 script {
